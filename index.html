@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chart Elements Word Search</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:    #020c1b;
+    --bg-mid:     #0a1628;
+    --bg-card:    #0d1f3c;
+    --blue-dim:   #1a3a6b;
+    --blue-core:  #1e6fdc;
+    --blue-bright:#4da6ff;
+    --blue-glow:  #7ec8ff;
+    --cyan:       #00d4ff;
+    --white:      #e8f4ff;
+    --muted:      #4a6a8a;
+    --found-1:    #4da6ff;
+    --found-2:    #00d4ff;
+    --found-3:    #a78bfa;
+    --found-4:    #34d399;
+    --found-5:    #fbbf24;
+    --found-6:    #f472b6;
+    --found-7:    #38bdf8;
+    --found-8:    #fb923c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg-deep);
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(30,111,220,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30,111,220,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Radial glow blob */
+  body::after {
+    content: '';
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(30,111,220,0.12) 0%, transparent 70%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 0;
+    animation: pulse-bg 4s ease-in-out infinite;
+  }
+
+  @keyframes pulse-bg {
+    0%, 100% { opacity: 0.6; transform: translate(-50%,-50%) scale(1); }
+    50%       { opacity: 1;   transform: translate(-50%,-50%) scale(1.1); }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 700px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  header .label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 6px;
+    color: var(--blue-bright);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    opacity: 0.8;
+  }
+
+  header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(20px, 4vw, 32px);
+    font-weight: 900;
+    letter-spacing: 3px;
+    background: linear-gradient(90deg, var(--blue-bright), var(--cyan), var(--blue-glow));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    line-height: 1.1;
+  }
+
+  header p {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  /* ── WORD CHIPS ── */
+  .word-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+
+  .chip {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1.5px solid var(--blue-dim);
+    background: rgba(13,31,60,0.7);
+    color: var(--muted);
+    transition: all 0.35s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .chip.found {
+    color: var(--found-color, var(--blue-bright));
+    border-color: var(--found-color, var(--blue-bright));
+    background: color-mix(in srgb, var(--found-color, var(--blue-bright)) 12%, transparent);
+    text-decoration: line-through;
+    text-shadow: 0 0 8px var(--found-color, var(--blue-bright));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--found-color, var(--blue-bright)) 30%, transparent);
+    animation: chip-pop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes chip-pop {
+    0%   { transform: scale(0.8); }
+    100% { transform: scale(1); }
+  }
+
+  /* ── GRID CARD ── */
+  .grid-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(77,166,255,0.2);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow:
+      0 0 0 1px rgba(77,166,255,0.05),
+      0 8px 40px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+    backdrop-filter: blur(8px);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .grid-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(77,166,255,0.4), transparent);
+  }
+
+  /* ── THE GRID TABLE ── */
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 3px;
+    table-layout: fixed;
+  }
+
+  td.cell {
+    text-align: center;
+    vertical-align: middle;
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(10px, 2vw, 15px);
+    font-weight: 700;
+    aspect-ratio: 1;
+    padding: 0;
+    height: clamp(32px, 5vw, 46px);
+    border-radius: 6px;
+    cursor: crosshair;
+    color: rgba(148,181,220,0.7);
+    background: rgba(10,22,40,0.6);
+    border: 1px solid rgba(30,111,220,0.08);
+    transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+  }
+
+  td.cell:hover:not(.found-cell) {
+    background: rgba(30,111,220,0.12);
+    color: var(--blue-glow);
+    border-color: rgba(77,166,255,0.25);
+  }
+
+  td.cell.selecting {
+    background: rgba(77,166,255,0.18);
+    color: var(--blue-glow);
+    border-color: rgba(77,166,255,0.5);
+    box-shadow: 0 0 10px rgba(77,166,255,0.25);
+    transform: scale(1.05);
+  }
+
+  td.cell.wrong {
+    background: rgba(239,68,68,0.2);
+    border-color: rgba(239,68,68,0.5);
+    color: #fca5a5;
+    animation: shake 0.35s ease;
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-4px); }
+    60%      { transform: translateX(4px); }
+    80%      { transform: translateX(-2px); }
+  }
+
+  td.cell.found-cell {
+    color: var(--cell-color, var(--blue-bright));
+    background: color-mix(in srgb, var(--cell-color, var(--blue-bright)) 15%, rgba(10,22,40,0.8));
+    border-color: color-mix(in srgb, var(--cell-color, var(--blue-bright)) 50%, transparent);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--cell-color, var(--blue-bright)) 35%, transparent);
+    text-shadow: 0 0 8px var(--cell-color, var(--blue-bright));
+    cursor: default;
+    animation: cell-found 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes cell-found {
+    0%   { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  /* ── PROGRESS ── */
+  .progress-bar-wrap {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    justify-content: center;
+  }
+
+  .progress-track {
+    flex: 1;
+    max-width: 280px;
+    height: 5px;
+    background: rgba(30,111,220,0.15);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--blue-core), var(--cyan));
+    box-shadow: 0 0 10px rgba(0,212,255,0.5);
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+    width: 0%;
+  }
+
+  .progress-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    color: var(--blue-bright);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* ── WIN BANNER ── */
+  .win-banner {
+    display: none;
+    text-align: center;
+    margin-top: 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-shadow: 0 0 20px var(--cyan);
+    animation: fadeUp 0.5s ease;
+  }
+
+  .win-banner.show { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hint {
+    text-align: center;
+    font-size: 10px;
+    color: rgba(74,106,138,0.6);
+    margin-top: 14px;
+    letter-spacing: 2px;
+  }
+
+  /* Scanline overlay */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  /* Floating particles */
+  .particles {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: rgba(77,166,255,0.5);
+    animation: float-up linear infinite;
+  }
+  @keyframes float-up {
+    0%   { transform: translateY(100vh) translateX(0);  opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translateY(-50px) translateX(20px); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="particles" id="particles"></div>
+
+<div class="container">
+
+  <header>
+    <div class="label">// word search puzzle //</div>
+    <h1>CHART ELEMENTS</h1>
+    <p>Find &amp; encircle all 8 hidden terms</p>
+  </header>
+
+  <div class="word-list" id="wordList"></div>
+
+  <div class="grid-card">
+    <table id="grid"></table>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-label" id="progressLabel">0 / 8</div>
+  </div>
+
+  <div class="win-banner" id="winBanner">🎯 ALL ELEMENTS LOCATED — MISSION COMPLETE 🎯</div>
+
+  <p class="hint">[ CLICK &amp; DRAG TO SELECT · HORIZONTAL · VERTICAL · DIAGONAL ]</p>
+</div>
+
+<script>
+const GRID_DATA = [
+  ['L','D','P','L','O','T','A','R','E','A','D','C'],
+  ['D','S','O','A','M','E','G','K','D','A','A','H'],
+  ['A','V','K','Z','Z','V','R','T','Z','X','T','A'],
+  ['T','C','U','X','H','Q','I','C','F','I','A','R'],
+  ['A','F','Y','M','J','Q','D','H','L','S','T','T'],
+  ['L','E','G','E','N','D','L','A','Y','T','A','T'],
+  ['A','Y','Z','T','W','M','I','R','T','I','B','I'],
+  ['B','O','C','S','X','L','N','T','B','T','L','T'],
+  ['E','K','U','S','B','N','E','A','X','L','E','L'],
+  ['L','B','C','L','M','B','S','R','Z','E','P','E'],
+  ['S','S','J','S','M','U','V','E','C','S','E','Y'],
+  ['H','F','F','M','R','M','O','A','D','D','N','T'],
+];
+
+const WORDS = [
+  { word: 'PLOTAREA',   label: 'Plot area' },
+  { word: 'DATALABELS', label: 'Data labels' },
+  { word: 'LEGEND',     label: 'Legend' },
+  { word: 'GRIDLINES',  label: 'Gridlines' },
+  { word: 'CHARTTITLE', label: 'Chart title' },
+  { word: 'DATATABLE',  label: 'Data table' },
+  { word: 'AXISTITLES', label: 'Axis titles' },
+  { word: 'CHARTAREA',  label: 'Chart area' },
+];
+
+const COLORS = [
+  '#4da6ff','#00d4ff','#a78bfa',
+  '#34d399','#fbbf24','#f472b6',
+  '#38bdf8','#fb923c'
+];
+
+// ── Find words in grid ──
+function findWord(grid, word) {
+  const R = grid.length, C = grid[0].length;
+  const dirs = [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+  for (let r = 0; r < R; r++) {
+    for (let c = 0; c < C; c++) {
+      for (const [dr,dc] of dirs) {
+        let ok = true; const cells = [];
+        for (let i = 0; i < word.length; i++) {
+          const nr = r+dr*i, nc = c+dc*i;
+          if (nr<0||nr>=R||nc<0||nc>=C||grid[nr][nc]!==word[i]){ok=false;break;}
+          cells.push({r:nr,c:nc});
+        }
+        if (ok) return cells;
+      }
+    }
+  }
+  return null;
+}
+
+const LOCATIONS = {};
+WORDS.forEach(({word}) => {
+  const loc = findWord(GRID_DATA, word);
+  if (loc) LOCATIONS[word] = loc;
+});
+
+// ── State ──
+let isDragging = false;
+let startCell  = null;
+let currentSel = [];
+let foundMap   = {}; // word -> color
+let foundCells = {}; // "r-c" -> color
+let colorIndex = 0;
+
+// ── Build particles ──
+(function() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 25; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = `${Math.random()*100}%`;
+    p.style.animationDuration = `${6 + Math.random()*12}s`;
+    p.style.animationDelay = `${Math.random()*10}s`;
+    p.style.opacity = 0.3 + Math.random()*0.5;
+    container.appendChild(p);
+  }
+})();
+
+// ── Build word chips ──
+const wordListEl = document.getElementById('wordList');
+WORDS.forEach(({word, label}) => {
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  chip.id = 'chip-' + word;
+  chip.textContent = label;
+  wordListEl.appendChild(chip);
+});
+
+// ── Build grid ──
+const gridEl = document.getElementById('grid');
+GRID_DATA.forEach((row, r) => {
+  const tr = document.createElement('tr');
+  row.forEach((letter, c) => {
+    const td = document.createElement('td');
+    td.className = 'cell';
+    td.id = `cell-${r}-${c}`;
+    td.textContent = letter;
+    td.dataset.r = r;
+    td.dataset.c = c;
+
+    td.addEventListener('mousedown', onMouseDown);
+    td.addEventListener('mouseenter', onMouseEnter);
+    td.addEventListener('touchstart', onTouchStart, {passive:false});
+    td.addEventListener('touchmove',  onTouchMove,  {passive:false});
+
+    tr.appendChild(td);
+  });
+  gridEl.appendChild(tr);
+});
+
+document.addEventListener('mouseup', onMouseUp);
+document.addEventListener('touchend', onTouchEnd);
+
+// ── Helpers ──
+function getCell(r, c) {
+  return document.getElementById(`cell-${r}-${c}`);
+}
+
+function cellsBetween(a, b) {
+  if (!a || !b) return [];
+  const dr = Math.sign(b.r - a.r);
+  const dc = Math.sign(b.c - a.c);
+  if (dr===0 && dc===0) return [a];
+  const rowDiff = Math.abs(b.r - a.r);
+  const colDiff = Math.abs(b.c - a.c);
+  if (dr!==0 && dc!==0 && rowDiff!==colDiff) return [a];
+  const cells = [];
+  let r=a.r, c=a.c;
+  const steps = Math.max(rowDiff,colDiff);
+  for (let i=0; i<=steps; i++) { cells.push({r,c}); r+=dr; c+=dc; }
+  return cells;
+}
+
+function clearSelection() {
+  currentSel.forEach(({r,c}) => {
+    const key = `${r}-${c}`;
+    const td = getCell(r,c);
+    if (!foundCells[key]) {
+      td.classList.remove('selecting','wrong');
+    }
+  });
+  currentSel = [];
+}
+
+function applySelecting(cells) {
+  cells.forEach(({r,c}) => {
+    const key = `${r}-${c}`;
+    if (!foundCells[key]) getCell(r,c).classList.add('selecting');
+  });
+}
+
+function checkSelection() {
+  const word = currentSel.map(({r,c}) => GRID_DATA[r][c]).join('');
+  const wordRev = [...word].reverse().join('');
+  for (const {word: w} of WORDS) {
+    if ((word===w||wordRev===w) && !foundMap[w]) return w;
+  }
+  return null;
+}
+
+function markWrong() {
+  currentSel.forEach(({r,c}) => {
+    const td = getCell(r,c);
+    td.classList.remove('selecting');
+    td.classList.add('wrong');
+  });
+  setTimeout(() => {
+    currentSel.forEach(({r,c}) => {
+      const td = getCell(r,c);
+      if (!foundCells[`${r}-${c}`]) td.classList.remove('wrong');
+    });
+    currentSel = [];
+  }, 500);
+}
+
+function markFound(word) {
+  const color = COLORS[colorIndex++ % COLORS.length];
+  foundMap[word] = color;
+  currentSel.forEach(({r,c}) => {
+    const key = `${r}-${c}`;
+    foundCells[key] = color;
+    const td = getCell(r,c);
+    td.classList.remove('selecting');
+    td.classList.add('found-cell');
+    td.style.setProperty('--cell-color', color);
+  });
+  // Update chip
+  const chip = document.getElementById('chip-' + word);
+  if (chip) {
+    chip.classList.add('found');
+    chip.style.setProperty('--found-color', color);
+  }
+  updateProgress();
+  currentSel = [];
+}
+
+function updateProgress() {
+  const n = Object.keys(foundMap).length;
+  document.getElementById('progressFill').style.width = `${(n/8)*100}%`;
+  document.getElementById('progressLabel').textContent = `${n} / 8`;
+  if (n === 8) {
+    document.getElementById('winBanner').classList.add('show');
+    triggerConfetti();
+  }
+}
+
+function triggerConfetti() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 30; i++) {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      p.style.cssText = `
+        position:fixed;
+        width:6px;height:6px;border-radius:2px;
+        background:${COLORS[Math.floor(Math.random()*COLORS.length)]};
+        left:${Math.random()*100}%;
+        top:100%;
+        animation:float-up ${1+Math.random()*2}s ease-out forwards;
+        pointer-events:none;z-index:200;
+      `;
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 3000);
+    }, i*60);
+  }
+}
+
+// ── Mouse events ──
+function onMouseDown(e) {
+  e.preventDefault();
+  isDragging = true;
+  startCell = { r: +this.dataset.r, c: +this.dataset.c };
+  clearSelection();
+  currentSel = [startCell];
+  applySelecting(currentSel);
+}
+
+function onMouseEnter(e) {
+  if (!isDragging || !startCell) return;
+  clearSelection();
+  const end = { r: +this.dataset.r, c: +this.dataset.c };
+  currentSel = cellsBetween(startCell, end);
+  applySelecting(currentSel);
+}
+
+function onMouseUp(e) {
+  if (!isDragging) return;
+  isDragging = false;
+  if (currentSel.length < 2) { clearSelection(); return; }
+  const found = checkSelection();
+  if (found) markFound(found);
+  else markWrong();
+}
+
+// ── Touch events ──
+function getCellFromTouch(touch) {
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  if (el && el.classList.contains('cell')) return el;
+  return null;
+}
+
+function onTouchStart(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  isDragging = true;
+  startCell = { r: +this.dataset.r, c: +this.dataset.c };
+  clearSelection();
+  currentSel = [startCell];
+  applySelecting(currentSel);
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  if (!isDragging || !startCell) return;
+  const touch = e.touches[0];
+  const el = getCellFromTouch(touch);
+  if (!el) return;
+  const end = { r: +el.dataset.r, c: +el.dataset.c };
+  clearSelection();
+  currentSel = cellsBetween(startCell, end);
+  applySelecting(currentSel);
+}
+
+function onTouchEnd(e) {
+  if (!isDragging) return;
+  isDragging = false;
+  if (currentSel.length < 2) { clearSelection(); return; }
+  const found = checkSelection();
+  if (found) markFound(found);
+  else markWrong();
+}
+</script>
+</body>
+</html>
